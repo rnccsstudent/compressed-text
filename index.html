@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Offline QR: Compress Long Text</title>
+  <script src="pako.min.js"></script>
+  <script src="kjua.min.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    textarea { width: 100%; height: 150px; margin-bottom: 10px; }
+    #qr { margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+  <h2>📝 Enter Long Text</h2>
+  <textarea id="textInput" placeholder="Type or paste long text here..."></textarea>
+  <button onclick="generateQR()">Generate QR</button>
+
+  <div id="qr"></div>
+
+  <h2>🔍 Decode QR (Paste Base64 from QR below)</h2>
+  <textarea id="scanInput" placeholder="Paste scanned base64 QR text here..."></textarea>
+  <button onclick="decodeQR()">Decode Text</button>
+  <pre id="decodedOutput"></pre>
+
+  <script>
+    // Compress and generate QR
+    function generateQR() {
+      const input = document.getElementById('textInput').value;
+      const compressed = pako.deflate(input);
+      const base64 = btoa(String.fromCharCode(...compressed));
+      
+      // Clear old QR
+      document.getElementById('qr').innerHTML = '';
+      
+      // Generate QR
+      const qr = kjua({
+        text: base64,
+        render: 'image',
+        ecLevel: 'L',
+        size: 300
+      });
+      document.getElementById('qr').appendChild(qr);
+
+      // For testing, auto paste into decode input
+      document.getElementById('scanInput').value = base64;
+    }
+
+    // Decode base64 from QR and decompress
+    function decodeQR() {
+      const base64 = document.getElementById('scanInput').value;
+      try {
+        const binary = atob(base64);
+        const byteArray = Uint8Array.from(binary, c => c.charCodeAt(0));
+        const originalText = pako.inflate(byteArray, { to: 'string' });
+        document.getElementById('decodedOutput').textContent = originalText;
+      } catch (e) {
+        document.getElementById('decodedOutput').textContent = '❌ Error decoding: ' + e;
+      }
+    }
+  </script>
+
+</body>
+</html>
