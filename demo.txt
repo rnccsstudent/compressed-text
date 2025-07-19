@@ -1,202 +1,46 @@
-Translator.js import React, { useState, useRef } from 'react';
-import axios from 'axios';
-
-const Translator = () => {
-  const [text, setText] = useState('');
-  const [translatedText, setTranslatedText] = useState('');
-  const [audioUrl, setAudioUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [tld, setTld] = useState('com');
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const audioRef = useRef();
-
-  const handleTranslate = async () => {
-    if (!text.trim()) {
-      alert("Please enter text");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setAudioUrl('');
-    setTranslatedText('');
-
-    try {
-      const response = await axios.post('http://localhost:5000/translate', {
-        text,
-        tld,
-      });
-
-      setTranslatedText(response.data.translation);
-      setAudioUrl(response.data.audio_url);
-    } catch (err) {
-      setError("Error communicating with backend");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAudioPlay = () => {
-    setIsSpeaking(true);
-  };
-
-  const handleAudioEnd = () => {
-    setIsSpeaking(false);
-  };
-
-  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  const charCount = text.length;
-
-  return (
-    <div style={{ maxWidth: 700, margin: 'auto', padding: 20 }}>
-      <h2>🌍 Text-to-Speech</h2>
-
-      <label>🌐 Voice Region (gTTS)</label>
-      <select value={tld} onChange={(e) => setTld(e.target.value)} style={{ marginBottom: 10 }}>
-        <option value="com">US English</option>
-        <option value="co.uk">UK English</option>
-        <option value="co.in">Indian English</option>
-      </select>
-
-      <textarea
-        rows={4}
-        style={{ width: '100%', padding: 10, fontSize: 16 }}
-        placeholder="Enter English text here..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-
-      <p style={{ fontSize: 14, color: '#555' }}>
-        Words: {wordCount} | Characters: {charCount}
-      </p>
-
-      {charCount > 200 && (
-       <p style={{ color: 'orange' }}>⚠️ Keep text under 200 characters for faster speech.</p>
-      )}
-
-      <button
-        onClick={handleTranslate}
-        style={{ marginTop: 10, padding: '10px 20px', fontSize: 16 }}
-        disabled={loading}
-      >
-        {loading ? 'Processing...' : 'Speak'}
-      </button>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {translatedText && (
-        <div style={{ marginTop: 20 }}>
-          <h3>🔁 Translation:</h3>
-          <p>{translatedText}</p>
-
-          {audioUrl && (
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
-              <audio
-                controls
-                src={audioUrl}
-                ref={audioRef}
-                onPlay={handleAudioPlay}
-                onEnded={handleAudioEnd}
-              />
-
-              <div style={{ marginTop: 10 }}>
-  <img
-    src={isSpeaking ? "/speaking-cartoon.gif" : "/cartoon.jpg"}
-    alt="Cartoon"
-    width="150"
-  />
-  <p>{isSpeaking ? '🔊 Speaking...' : '🧘 Idle'}</p>
-</div>
-
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Translator;
-               App.js import React, { useEffect, useRef } from 'react';
-import TranslatorLink from './components/TranslatorLink';
-import Translator from './components/Translator';
-import './App.css'; // Style file remains
-
-function App() {
-  const cartoonRef = useRef(null);
-
-  useEffect(() => {
-    const handleWordHighlight = (text) => {
-      if (!cartoonRef.current) return;
-
-      const words = text.split(' ');
-      let index = 0;
-
-      const interval = setInterval(() => {
-        if (index >= words.length) {
-          clearInterval(interval);
-          cartoonRef.current.textContent = '';
-          return;
-        }
-
-        cartoonRef.current.textContent = words[index];
-        index++;
-      }, 400); // adjust speed
-    };
-
-    window.addEventListener('highlightWord', (e) => handleWordHighlight(e.detail));
-    return () => window.removeEventListener('highlightWord', (e) => handleWordHighlight(e.detail));
-  }, []);
-
-  return (
-    <div className="App">
-      <h1>🎙️ English Speaking Practice</h1>
-      <div className="cartoon-wrapper">
-        <img src="/speaking-cartoon.gif" alt="Speaking Cartoon" className="cartoon-image" />
-        <div className="word-highlight" ref={cartoonRef}></div>
-      </div>
-      <Translator />
-      <TranslatorLink />
-    </div>
-  );
-}
-
-export default App;
-app.py from flask import Flask, request, jsonify, send_file
-from gtts import gTTS
-import tempfile
-import os
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+from gtts import gTTS
+from deep_translator import GoogleTranslator
+import os
+import uuid
 
 app = Flask(__name__)
+CORS(app)
 
-# ✅ সঠিকভাবে CORS সেট করা
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
+# Create static folder if not exist
+if not os.path.exists("static"):
+    os.makedirs("static")
 
-@app.route('/translate', methods=['POST'])
+@app.route("/translate", methods=["POST"])
 def translate():
     data = request.get_json()
-    text = data.get('text')
-    tld = data.get('tld', 'com')
+    text = data.get("text")
+    tld = data.get("tld", "com")  # Default: US English
 
-    translated = text  # Dummy translation
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
 
-    tts = gTTS(translated, lang='en', tld=tld)
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-    tts.save(tmp.name)
+    try:
+        # Step 1: Translate to Bengali (or change the target as needed)
+        translated = GoogleTranslator(source='auto', target='bn').translate(text)
 
-    return jsonify({
-        'translation': translated,
-        'audio_url': f'/audio/{os.path.basename(tmp.name)}'
-    })
+        # Step 2: Generate speech audio (gTTS supports only English accents for now)
+        tts = gTTS(text, lang='en', tld=tld)
 
-@app.route('/audio/<filename>')
-def serve_audio(filename):
-    return send_file(os.path.join(tempfile.gettempdir(), filename))
+        # Step 3: Save audio to static folder
+        filename = f"{uuid.uuid4()}.mp3"
+        filepath = os.path.join("static", filename)
+        tts.save(filepath)
 
-if __name__ == '__main__':
-    # ✅ Debug mode ছাড়াও CORS ঠিকমতো কাজ করাবে
-    app.run(debug=True, port=5000)   no error but not working 
+        return jsonify({
+            "translation": translated,
+            "audio_url": f"/static/{filename}"
+        })
+
+    except Exception as e:
+        print("Error:", e)
+        return jsonify({"error": "Translation or TTS failed"}), 500
+
+if __name__ == "__main__":
+    app.run(debug=True)
