@@ -1,57 +1,148 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from gtts import gTTS
-from deep_translator import GoogleTranslator
-import os
-import uuid
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
 
-app = Flask(__name__)
-CORS(app)
 
-# Ensure 'static' directory exists
-if not os.path.exists("static"):
-    os.makedirs("static")
+const Translator = () => {
+  const [text, setText] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [tld, setTld] = useState('com');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
-# Allowed accents mapping with their TLDs
-TLD_MAP = {
-    "us": "com",
-    "uk": "co.uk",
-    "india": "co.in",
-    "australia": "com.au",
-    "south_africa": "co.za"
-}
+  const audioRef = useRef();
 
-@app.route("/speak", methods=["POST"])
-def speak():
-    try:
-        text = request.json.get('text', '').strip()
-        accent = request.json.get("accent", "us").lower()
+  const handleTranslate = async () => {
+    if (!text.trim()) {
+      alert("Please enter text");
+      return;
+    }
 
-        if not text:
-            return jsonify({"error": "No text provided"}), 400
+    setLoading(true);
+    setError(null);
+    setAudioUrl(``);
+    setTranslatedText('');
 
-        # Use correct TLD
-        tld = TLD_MAP.get(accent, "com")
+    try {
+      const response = await axios.post('http://localhost:5000/speak', {
+        text,
+        tld,
+      });
 
-        # Translate to Bengali
-        translated = GoogleTranslator(source='auto', target='bn').translate(text)
+      setTranslatedText(response.data.translation);
+      // setAudioUrl(response.data.audio_url);
+      setAudioUrl(`http://localhost:5000${response.data.audio_url}`);
+    } catch (err) {
+      setError("Error communicating with backend");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        # Generate speech with selected accent
-        tts = gTTS(text=text, lang='en', tld=tld)
+  const handleAudioPlay = () => {
+    setIsSpeaking(true);
 
-        # Save audio to static folder
-        filename = f"audio_{uuid.uuid4().hex}.mp3"
-        filepath = os.path.join("static", filename)
-        tts.save(filepath)
+    const words = text.split(' ');
+    let index = 0;
 
-        return jsonify({
-            "translation": translated,
-            "audio_url": f"/static/{filename}"
-        })
+    const interval = setInterval(() => {
+      if(index >= words.length){
+        clearInterval(interval);
+        return;
+      }
 
-    except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": "Translation or TTS failed"}), 500
+    const event = new CustomEvent('highlightWord', {
+        detail: words[index]});
+        window.dispatchEvent(event);
+        index++;
+      },400);
+  };
 
-if __name__ == "__main__":
-    app.run(debug=True)
+  const handleAudioEnd = () => {
+    setIsSpeaking(false);
+  };
+
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const charCount = text.length;
+
+  return (
+    <div style={{ maxWidth: 700, margin: 'auto', padding: 20 }}>
+      <h2>🌍 Text-to-Speech</h2>
+
+      <label>🌐 Voice Region (gTTS)</label>
+      <select value={tld} onChange={(e) => setTld(e.target.value)} style={{ marginBottom: 10 }}>
+        <option value="com">US English</option>
+        <option value="co.uk">UK English</option>
+        <option value="co.in">Indian English</option>
+        <option value="com.au">Australian</option>
+        <option value="co.za">South African</option>
+      </select>
+
+      <textarea
+        rows={4}
+        style={{ width: '100%', padding: 10, fontSize: 16 }}
+        placeholder="Enter English text here..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+
+      <p style={{ fontSize: 14, color: '#555' }}>
+        Words: {wordCount} | Characters: {charCount}
+      </p>
+
+      {charCount > 200 && (
+       <p style={{ color: 'orange' }}>⚠️ Keep text under 200 characters for faster speech.</p>
+      )}
+
+      <button
+        onClick={handleTranslate}
+        style={{ marginTop: 10, padding: '10px 20px', fontSize: 16 }}
+        disabled={loading}
+      >
+        {loading ? 'Processing...' : 'Speak'}
+      </button>
+
+      {/* <button onClick={()=>{
+        if (audioRef.current){
+          audioRef.current.play().catch((err)=>
+          console.warn('Play failed',err));
+        }
+      }}>Play Again</button> */}
+
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {translatedText && (
+        <div style={{ marginTop: 20 }}>
+          <h3>🔁Bengali Translation:</h3>
+          <p>{translatedText}</p>
+
+          {audioUrl && (
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <audio
+                controls
+                src={audioUrl}
+                ref={audioRef}
+                onPlay={handleAudioPlay}
+                onEnded={handleAudioEnd}
+              />
+
+              <div style={{ marginTop: 10 }}>
+  <img
+    src={isSpeaking ? "/cartoon.gif" : "/cartoon.jpg"}
+    alt="Cartoon"
+    width="150"
+  />
+  <p>{isSpeaking ? '🔊 Speaking...' : ''}</p>
+</div>
+
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Translator;
