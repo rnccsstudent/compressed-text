@@ -10,7 +10,8 @@
     textarea { width: 100%; height: 150px; margin: 10px 0; }
     .qr-part { margin-bottom: 20px; }
     #qrContainer img { margin: 5px; }
-    pre { background: #f0f0f0; padding: 10px; }
+    pre { background: #f0f0f0; padding: 10px; white-space: pre-wrap; word-wrap: break-word; }
+    button { margin: 5px; }
   </style>
 </head>
 <body>
@@ -24,17 +25,30 @@
   <h2>🔍 Decode QR Parts</h2>
   <textarea id="scanInput" placeholder="Paste scanned base64 part like: 1/3|H4sIA... (one per line)"></textarea>
   <button onclick="reassembleQR()">🧩 Reassemble & Decode</button>
+
+  <div>
+    <button onclick="copyDecoded()" id="copyBtn" style="display:none;">📋 Copy</button>
+    <button onclick="downloadDecoded()" id="downloadBtn" style="display:none;">⬇️ Download .txt</button>
+  </div>
+
   <pre id="decodedOutput"></pre>
 
   <script>
-    const CHUNK_SIZE = 1000; // You can adjust depending on QR scan ability
+    const CHUNK_SIZE = 1000;
+
+    // On load, restore saved scanned parts if any
+    window.onload = () => {
+      const savedParts = localStorage.getItem('qrParts');
+      if (savedParts) {
+        document.getElementById('scanInput').value = savedParts;
+      }
+    };
 
     function generateQRs() {
       const input = document.getElementById('textInput').value;
       const compressed = pako.deflate(input);
       const base64 = btoa(String.fromCharCode(...compressed));
 
-      // Split into chunks
       const chunks = [];
       for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
         chunks.push(base64.slice(i, i + CHUNK_SIZE));
@@ -42,7 +56,7 @@
 
       const total = chunks.length;
       const qrContainer = document.getElementById('qrContainer');
-      qrContainer.innerHTML = ''; // Clear previous
+      qrContainer.innerHTML = '';
 
       chunks.forEach((chunk, i) => {
         const partText = `${i + 1}/${total}|${chunk}`;
@@ -62,6 +76,10 @@
 
     function reassembleQR() {
       const raw = document.getElementById('scanInput').value.trim().split('\n');
+
+      // Save to localStorage
+      localStorage.setItem('qrParts', document.getElementById('scanInput').value.trim());
+
       const parts = [];
 
       for (let line of raw) {
@@ -80,7 +98,6 @@
         return;
       }
 
-      // Check if all parts are present
       parts.sort((a, b) => a.index - b.index);
       const expected = parts[0].total;
       if (parts.length !== expected) {
@@ -88,16 +105,36 @@
         return;
       }
 
-      // Join base64 and decompress
       try {
         const base64 = parts.map(p => p.data).join('');
         const binary = atob(base64);
         const byteArray = Uint8Array.from(binary, c => c.charCodeAt(0));
         const originalText = pako.inflate(byteArray, { to: 'string' });
         document.getElementById('decodedOutput').textContent = originalText;
+
+        // Show buttons
+        document.getElementById('copyBtn').style.display = 'inline-block';
+        document.getElementById('downloadBtn').style.display = 'inline-block';
+
       } catch (e) {
         document.getElementById('decodedOutput').textContent = '❌ Error decoding: ' + e;
       }
+    }
+
+    function copyDecoded() {
+      const text = document.getElementById('decodedOutput').textContent;
+      navigator.clipboard.writeText(text)
+        .then(() => alert('✅ Copied to clipboard!'))
+        .catch(() => alert('❌ Copy failed.'));
+    }
+
+    function downloadDecoded() {
+      const text = document.getElementById('decodedOutput').textContent;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'decoded_text.txt';
+      a.click();
     }
   </script>
 
