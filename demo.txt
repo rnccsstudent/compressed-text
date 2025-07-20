@@ -25,10 +25,11 @@ const Translator = () => {
     setTranslatedText('');
 
     try {
-      const response = await axios.post('http://localhost:5000/speak', {
-        text,
-        tld,
-      });
+      // const response = await axios.post('http://localhost:5000/speak', {
+      //   text,
+      //   tld,
+      // });
+      const processedText = text.replace(/\./g, '. ...');
 
       setTranslatedText(response.data.translation);
       // setAudioUrl(response.data.audio_url);
