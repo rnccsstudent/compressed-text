@@ -1,0 +1,159 @@
+Great choice! NewPipe is a lightweight, open-source YouTube client that lets you download and keep videos permanently — without ads, logins, or Google tracking.
+
+Here’s a full, step-by-step guide to install, use, and back up videos with NewPipe on Android (including Android 12 or 11):
+
+
+---
+
+✅ STEP-BY-STEP GUIDE: Install & Use NewPipe
+
+
+---
+
+🛠️ Step 1: Install F-Droid (the app store for open-source apps)
+
+1. Open your browser and go to:
+👉 https://f-droid.org
+
+
+2. Tap "Download F-Droid" (APK file).
+
+
+3. Install the APK:
+
+If prompted, allow "Install unknown apps" from your browser.
+
+
+
+4. Once installed, open F-Droid and let it update.
+
+
+
+
+---
+
+📥 Step 2: Install NewPipe via F-Droid
+
+1. In the F-Droid app, tap the search icon.
+
+
+2. Search for NewPipe.
+
+
+3. Tap on NewPipe, then tap Install.
+
+
+
+✅ That’s it — you now have NewPipe installed!
+
+
+---
+
+🎬 Step 3: Use NewPipe to Watch and Download Videos
+
+1. Open NewPipe.
+
+
+2. Use the search bar to find a YouTube video.
+
+
+3. Tap the video to play it (no ads!).
+
+
+4. To download:
+
+Tap the Download icon (↓) under the video.
+
+Choose:
+
+Video resolution (e.g., 720p, 1080p)
+
+Format (video/audio or audio-only)
+
+Subtitles (optional)
+
+
+Tap OK to start downloading.
+
+
+
+5. By default, downloaded videos are saved in:
+
+/Download/NewPipe/
+
+Or whatever folder you choose.
+
+
+
+
+---
+
+📁 Step 4: Access & Back Up Downloaded Videos
+
+Open Files app or any file manager.
+
+Navigate to:
+
+Internal Storage > Download > NewPipe
+
+Copy or move the videos to:
+
+SD Card
+
+Cloud storage (e.g., Google Drive, Dropbox)
+
+PC (via USB)
+
+
+
+✅ These are regular video files (.mp4) — not locked like YouTube’s official app.
+
+
+---
+
+🛡️ Tips for Safe Use
+
+Feature	Available in NewPipe?
+
+No Google Account Required	✅ Yes
+Download in Background	✅ Yes
+Subtitles / Captions	✅ Yes
+Audio-only Downloads	✅ Yes (e.g., MP3)
+In-app Video Player	✅ Yes
+
+
+
+---
+
+🔁 Optional: Auto-Backup Downloads
+
+Use an app like Autosync, FolderSync, or Google Drive to automatically back up your /Download/NewPipe/ folder.
+
+
+
+---
+
+⚠️ Warnings / Limitations
+
+NewPipe doesn't support:
+
+YouTube comments or live chat
+
+Logging into your Google account (by design)
+
+
+Some videos may fail to play if YouTube changes its backend — updates usually fix this quickly.
+
+
+
+---
+
+🚀 Want Even More Control?
+
+You can also install NewPipe Legacy if you use older Android devices or want broader compatibility.
+
+
+---
+
+Would you like a guide for backing up NewPipe data when downgrading Android, or automating downloads? I can also walk you through using yt-dlp if you want to download full playlists or channels.
+
