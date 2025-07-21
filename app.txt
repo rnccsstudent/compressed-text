@@ -1,62 +1,129 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from gtts import gTTS
-from deep_translator import GoogleTranslator
-import os
-import uuid
-import re
+import React, { useState } from 'react';
+import axios from 'axios';
 
-app = Flask(__name__)
-CORS(app)
+const App = () => {
+  const [audioFile, setAudioFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [transcription, setTranscription] = useState('');
+  const [rawTranscription, setRawTranscription] = useState('');
+  const [sentences, setSentences] = useState([]);
 
-# Ensure 'static' folder exists
-if not os.path.exists("static"):
-    os.makedirs("static")
+  const handleFileChange = (e) => {
+    setAudioFile(e.target.files[0]);
+  };
 
-# Mapping user-friendly accents to TLDs
-TLD_MAP = {
-    "us": "com",
-    "uk": "co.uk",
-    "india": "co.in",
-    "australia": "com.au",
-    "south_africa": "co.za"
-}
+  const handleUpload = async () => {
+    if (!audioFile) return alert('Please select an audio file');
+    const durationInSeconds = Math.round(audioFile.size / 16000); // Approximation
+    const estimatedTime = Math.min(durationInSeconds * 0.1, 20); // Cap at 20 sec
 
-@app.route("/speak", methods=["POST"])
-def speak():
-    try:
-        # Get user input
-        text = request.json.get('text', '').strip()
-        accent = request.json.get("accent", "us").lower()
+    const formData = new FormData();
+    formData.append('audio', audioFile);
 
-        if not text:
-            return jsonify({"error": "No text provided"}), 400
+    setLoading(true);
+    setProgressText(`⏳ Estimated processing time: ${Math.round(estimatedTime)} sec...`);
 
-        # Convert accent to TLD
-        tld = TLD_MAP.get(accent, "com")
+    try {
+      const response = await axios.post('http://localhost:5000/analyze', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
 
-        # Add pause after each full stop for better flow in gTTS
-        processed_text = re.sub(r'\.\s*', '. ... ', text)
+      const data = response.data;
+      setRawTranscription(data.raw_transcription);
+      setTranscription(data.transcription);
+      setSentences(data.sentences);
+    } catch (error) {
+      alert('Error occurred during upload: ' + error.message);
+    } finally {
+      setLoading(false);
+      setProgressText('');
+    }
+  };
 
-        # Translate to Bengali
-        translated = GoogleTranslator(source='auto', target='bn').translate(text)
+  const styles = {
+    container: {
+      maxWidth: 600,
+      margin: 'auto',
+      padding: 20,
+      fontFamily: 'Arial',
+    },
+    input: {
+      margin: '10px 0',
+      width: '100%',
+    },
+    button: {
+      padding: '10px 20px',
+      backgroundColor: '#4CAF50',
+      color: 'white',
+      border: 'none',
+      borderRadius: 5,
+      cursor: 'pointer',
+      width: '100%',
+    },
+    feedbackBox: {
+      border: '1px solid #ccc',
+      borderRadius: 5,
+      padding: 10,
+      margin: '10px 0',
+      backgroundColor: '#f9f9f9',
+    },
+    sectionTitle: {
+      fontSize: '1.2em',
+      marginTop: 20,
+      color: '#333',
+    },
+    progress: {
+      marginTop: 15,
+      color: '#888',
+      fontStyle: 'italic',
+    },
+  };
 
-        # Generate speech
-        tts = gTTS(text=processed_text, lang='en', tld=tld)
+  return (
+    <div style={styles.container}>
+      <h2>🧠 Smart Transcription & Feedback App</h2>
 
-        # Save audio file
-        filename = f"audio_{uuid.uuid4().hex}.mp3"
-        filepath = os.path.join("static", filename)
-        tts.save(filepath)
+      <input type="file" accept="audio/*" onChange={handleFileChange} style={styles.input} />
+      <button onClick={handleUpload} style={styles.button}>
+        Upload & Analyze
+      </button>
 
-        return jsonify({
-            "translation": translated,
-            "audio_url": f"/static/{filename}"
-        })
+      {loading && <p style={styles.progress}>{progressText || 'Loading...'}</p>}
 
-    except Exception as e:
-        print("Error:", e)
-        return jsonify({"error": "Translation or TTS failed"}), 500
+      {!loading && transcription && (
+        <>
+          <h3 style={styles.sectionTitle}>🗣 Raw Transcription</h3>
+          <p>{rawTranscription}</p>
 
-if __name__ == "__main__":
-    app.run(debug=True)
+          <h3 style={styles.sectionTitle}>📝 Clean Transcription</h3>
+          <p>{transcription}</p>
+
+          <h3 style={styles.sectionTitle}>🔍 Sentence Feedback</h3>
+          {sentences.length > 0 &&
+            sentences.map((s, idx) => (
+              <div key={idx} style={styles.feedbackBox}>
+                <p><strong>Original:</strong> {s.original}</p>
+                <p><strong>Corrected:</strong> {s.corrected}</p>
+                <ul>
+                  {s.issues.length > 0 ? (
+                    s.issues.map((issue, i) => (
+                      <li key={i}>
+                        {issue.message}
+                        {issue.replacements.length > 0 &&
+                          ` (Suggestion: ${issue.replacements.join(', ')})`}
+                      </li>
+                    ))
+                  ) : (
+                    <li>No issues found</li>
+                  )}
+                </ul>
+              </div>
+            ))}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default App;
